@@ -9,22 +9,22 @@ import (
 	"net/url"
 	"os"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
 type Server struct {
 	Id                       int
-	MaximumActiveConnections int
-	CurrentActiveConnections int
-	Status                   bool
+	MaximumActiveConnections int64
+	CurrentActiveConnections int64
+	Status                   atomic.Bool
 	URL                      string
 	ReverseProxy             *httputil.ReverseProxy
 }
 
 type LoadBalancer struct {
 	Servers                []Server
-	TotalActiveConnections int
-	mu                     sync.Mutex
+	TotalActiveConnections int64
 }
 
 func (lb *LoadBalancer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -34,29 +34,22 @@ func (lb *LoadBalancer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	lb.mu.Lock()
-	server.CurrentActiveConnections++
-	lb.TotalActiveConnections++
-	lb.mu.Unlock()
+	atomic.AddInt64(&server.CurrentActiveConnections, 1)
+	atomic.AddInt64(&lb.TotalActiveConnections, 1)
 
 	defer func() {
-		lb.mu.Lock()
-		server.CurrentActiveConnections--
-		lb.TotalActiveConnections--
-		lb.mu.Unlock()
+		atomic.AddInt64(&server.CurrentActiveConnections, -1)
+		atomic.AddInt64(&lb.TotalActiveConnections, -1)
 	}()
 
 	server.ReverseProxy.ServeHTTP(w, r)
 }
 
 func (lb *LoadBalancer) selectServer() *Server {
-	lb.mu.Lock()
-	defer lb.mu.Unlock()
-
 	var optimalServer *Server
 	for i := 0; i < len(lb.Servers); i++ {
 		currentLoad := float64(lb.Servers[i].CurrentActiveConnections) / float64(lb.Servers[i].MaximumActiveConnections)
-		if !lb.Servers[i].Status || currentLoad >= 1.0 {
+		if !lb.Servers[i].Status.Load() || currentLoad >= 1.0 {
 			continue
 		}
 		if optimalServer == nil {
@@ -99,9 +92,8 @@ func healthCheck(lb *LoadBalancer, pause time.Duration) {
 					resp.Body.Close()
 				}
 
-				lb.mu.Lock()
-				serv.Status = newStatus
-				lb.mu.Unlock()
+				serv.Status.Store(newStatus)
+
 			}(&lb.Servers[i])
 		}
 		wg.Wait()
