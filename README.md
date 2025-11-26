@@ -4,9 +4,9 @@ HTTPS load balancer with least-connections algorithm and health checking.
 
 ## Features
 
-- **Least-connections balancing** — routes to server with lowest load relative to its limit
-- **Health checks** — polls `/health` endpoint every 2 minutes
-- **TLS termination** — HTTPS on load balancer, HTTP to backends
+- **Least-connections balancing** - routes to server with lowest load relative to its limit
+- **Health checks** - polls `/health` endpoint every 2 minutes
+- **TLS termination** - HTTPS on load balancer, HTTP to backends
 
 ## Configuration
 
