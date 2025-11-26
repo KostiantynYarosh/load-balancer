@@ -31,3 +31,4 @@ go run main.go -servers servers.json
 ```
 
 Load balancer listens on `https://localhost:8443`
+![Screenshot](https://media.discordapp.net/attachments/874216555670556675/1443136196741169212/dds1.png?ex=6927f8d1&is=6926a751&hm=311edaede1f338f3b8f261726666f3f6cbf5ca47a1f683f4997681c732e04c1a&=&format=webp&quality=lossless)
